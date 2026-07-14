@@ -1,0 +1,5 @@
+# Core dependencies for the WebSocket Server
+websockets>=11.0
+pyautogui>=0.9.54
+qrcode>=7.4.2
+pillow>=10.0.0

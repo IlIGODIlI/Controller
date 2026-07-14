@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ROV Virtual Controller</title>
+    <meta name="description" content="A touch-optimized virtual keyboard controller that sends real-time keypress signals to the host system via WebSockets.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-gradient: radial-gradient(circle at top, #181824 0%, #0c0c10 100%);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --glass-border-active: rgba(255, 255, 255, 0.15);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-glow: hsla(255, 75%, 60%, 0.35);
+            --accent: hsl(255, 75%, 62%);
+            --accent-active: hsl(255, 85%, 68%);
+            --danger: hsl(0, 72%, 51%);
+            --success: hsl(142, 72%, 40%);
+            --warning: hsl(38, 92%, 50%);
+            --key-bg: rgba(255, 255, 255, 0.05);
+            --key-bg-hover: rgba(255, 255, 255, 0.08);
+            --key-bg-active: hsl(255, 75%, 62%);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            --transition-fast: 0.1s ease;
+            --transition-normal: 0.25s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        /* App Container */
+        .app-container {
+            width: 100%;
+            height: 100vh;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px;
+        }
+
+        /* Header bar styling */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--shadow-sm);
+            z-index: 100;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-section h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-section span {
+            font-size: 0.7rem;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 6px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            border: 1px solid var(--glass-border);
+        }
+
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--warning);
+            box-shadow: 0 0 8px var(--warning);
+            transition: all var(--transition-normal);
+        }
+
+        .status-indicator.connected {
+            background-color: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .status-indicator.disconnected {
+            background-color: var(--danger);
+            box-shadow: 0 0 10px var(--danger);
+        }
+
+        .status-text {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .config-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+            transition: all var(--transition-fast);
+        }
+
+        .config-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--glass-border);
+        }
+
+        .config-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        /* Config Panel overlay */
+        .config-panel {
+            background: rgba(20, 20, 28, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border-active);
+            border-radius: 20px;
+            padding: 20px;
+            position: absolute;
+            top: 76px;
+            right: 12px;
+            width: 320px;
+            box-shadow: var(--shadow-md);
+            z-index: 110;
+            display: none;
+            flex-direction: column;
+            gap: 14px;
+            animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .config-panel h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.05rem;
+            color: var(--text-primary);
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .input-group label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-group input {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            width: 100%;
+            transition: border-color var(--transition-fast);
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent);
+        }
+
+        .connect-btn {
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background var(--transition-fast);
+        }
+
+        .connect-btn:hover {
+            background: var(--accent-active);
+        }
+
+        /* Keyboard Layout Wrapper */
+        .keyboard-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin: 16px 0;
+        }
+
+        .keyboard {
+            width: 100%;
+            max-width: 950px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            gap: 5px;
+        }
+
+        /* Key Styling */
+        .key {
+            flex: 1;
+            height: 52px;
+            background: var(--key-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        /* Key hover and active styles */
+        @media(hover: hover) {
+            .key:hover {
+                background: var(--key-bg-hover);
+                border-color: var(--glass-border-active);
+            }
+        }
+
+        .key.active {
+            background: var(--key-bg-active) !important;
+            border-color: var(--accent-active) !important;
+            color: #fff;
+            transform: scale(0.94);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Key sizing overrides */
+        .key.double {
+            flex: 2;
+        }
+
+        .key.space {
+            flex: 6;
+        }
+
+        /* Non-alphanumeric special keys styling */
+        .key-special {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .key-arrow {
+            background: rgba(255, 255, 255, 0.03);
+            font-size: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        /* Latency Display */
+        .latency-container {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Footer info */
+        footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            width: 100%;
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* Landscape orientation alert for small mobile screens in portrait */
+        .orientation-warning {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #09090c;
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 24px;
+            color: var(--text-primary);
+        }
+
+        .orientation-warning svg {
+            width: 48px;
+            height: 48px;
+            fill: var(--accent);
+            margin-bottom: 16px;
+            animation: rotateDevice 2s infinite ease-in-out;
+        }
+
+        @keyframes rotateDevice {
+            0% { transform: rotate(0deg); }
+            50% { transform: rotate(-90deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        .orientation-warning h2 {
+            font-family: 'Outfit', sans-serif;
+            margin-bottom: 8px;
+        }
+
+        .orientation-warning p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            max-width: 280px;
+        }
+
+        /* Media queries for landscape recommendation on mobile devices */
+        @media (max-width: 768px) and (orientation: portrait) {
+            .orientation-warning {
+                display: flex;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="orientation-warning">
+        <svg viewBox="0 0 24 24">
+            <path d="M19 1H5c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm-2 18H7V5h10v14z"/>
+        </svg>
+        <h2>Rotate Your Device</h2>
+        <p>Please rotate your device to landscape mode for the best gamepad experience.</p>
+    </div>
+
+    <div class="app-container">
+        
+        <header>
+            <div class="logo-section">
+                <h1>ROV CONTROLLER</h1>
+                <span>v3.0.0</span>
+            </div>
+            
+            <div class="status-container">
+                <div class="latency-container" id="latencyContainer" style="display: none;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+                        <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span id="latencyText">-- ms</span>
+                </div>
+                <div class="status-indicator" id="statusDot"></div>
+                <span class="status-text" id="statusText">Disconnected</span>
+                
+                <button class="config-btn" id="configToggleBtn" title="Connection Settings">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.85,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Connection Config Panel -->
+        <div class="config-panel" id="configPanel">
+            <h3>Connection Settings</h3>
+            <div class="input-group">
+                <label for="serverIp">Host IP / Domain</label>
+                <input type="text" id="serverIp" placeholder="e.g. 192.168.1.10">
+            </div>
+            <div class="input-group">
+                <label for="serverPort">Port</label>
+                <input type="number" id="serverPort" placeholder="8765" value="8765">
+            </div>
+            <button class="connect-btn" id="connectBtn">Connect Controller</button>
+        </div>
+
+        <!-- Virtual Keyboard Interface -->
+        <div class="keyboard-wrapper">
+            <div class="keyboard">
+                
+                <div class="row">
+                    <div class="key" data-key="1">1</div>
+                    <div class="key" data-key="2">2</div>
+                    <div class="key" data-key="3">3</div>
+                    <div class="key" data-key="4">4</div>
+                    <div class="key" data-key="5">5</div>
+                    <div class="key" data-key="6">6</div>
+                    <div class="key" data-key="7">7</div>
+                    <div class="key" data-key="8">8</div>
+                    <div class="key" data-key="9">9</div>
+                    <div class="key" data-key="0">0</div>
+                </div>
+                
+                <div class="row">
+                    <div class="key" data-key="q">Q</div>
+                    <div class="key" data-key="w">W</div>
+                    <div class="key" data-key="e">E</div>
+                    <div class="key" data-key="r">R</div>
+                    <div class="key" data-key="t">T</div>
+                    <div class="key" data-key="y">Y</div>
+                    <div class="key" data-key="u">U</div>
+                    <div class="key" data-key="i">I</div>
+                    <div class="key" data-key="o">O</div>
+                    <div class="key" data-key="p">P</div>
+                </div>
+                
+                <div class="row">
+                    <div class="key" data-key="a">A</div>
+                    <div class="key" data-key="s">S</div>
+                    <div class="key" data-key="d">D</div>
+                    <div class="key" data-key="f">F</div>
+                    <div class="key" data-key="g">G</div>
+                    <div class="key" data-key="h">H</div>
+                    <div class="key" data-key="j">J</div>
+                    <div class="key" data-key="k">K</div>
+                    <div class="key" data-key="l">L</div>
+                </div>
+                
+                <div class="row">
+                    <div class="key key-special double" data-key="shift">SHIFT</div>
+                    <div class="key" data-key="z">Z</div>
+                    <div class="key" data-key="x">X</div>
+                    <div class="key" data-key="c">C</div>
+                    <div class="key" data-key="v">V</div>
+                    <div class="key" data-key="b">B</div>
+                    <div class="key" data-key="n">N</div>
+                    <div class="key" data-key="m">M</div>
+                    <div class="key key-special double" data-key="backspace">⌫</div>
+                </div>
+                
+                <div class="row">
+                    <div class="key key-arrow double" data-key="left">←</div>
+                    <div class="key key-arrow double" data-key="down">↓</div>
+                    <div class="key key-arrow double" data-key="up">↑</div>
+                    <div class="key key-arrow double" data-key="right">→</div>
+                </div>
+                
+                <div class="row">
+                    <div class="key space" data-key="space">SPACE</div>
+                    <div class="key key-special double" data-key="enter">ENTER</div>
+                </div>
+                
+            </div>
+        </div>
+
+        <footer>
+            <span>Status: <strong id="footerStatus">Idle</strong></span>
+            <span>Created by <a href="#" target="_blank">Aryan</a> &bull; Modernized for Recruits</span>
+        </footer>
+
+    </div>
+
+    <script>
+        // DOM Elements
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const footerStatus = document.getElementById('footerStatus');
+        const configToggleBtn = document.getElementById('configToggleBtn');
+        const configPanel = document.getElementById('configPanel');
+        const serverIpInput = document.getElementById('serverIp');
+        const serverPortInput = document.getElementById('serverPort');
+        const connectBtn = document.getElementById('connectBtn');
+        const latencyContainer = document.getElementById('latencyContainer');
+        const latencyText = document.getElementById('latencyText');
+        const keys = document.querySelectorAll('.key');
+
+        // State Variables
+        let socket = null;
+        let reconnectInterval = 2000;
+        let reconnectTimeout = null;
+        let lastPingTime = 0;
+        let pingIntervalTimer = null;
+        let currentUrl = "";
+
+        // Track active mouse-pressed key to prevent sticky keys on mouseleave
+        let mousePressedKey = null;
+
+        // Toggle Config Panel
+        configToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            configPanel.style.display = configPanel.style.display === 'flex' ? 'none' : 'flex';
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!configPanel.contains(e.target) && e.target !== configToggleBtn) {
+                configPanel.style.display = 'none';
+            }
+        });
+
+        // Setup auto-detection of host from location bar
+        window.addEventListener('DOMContentLoaded', () => {
+            const hostname = window.location.hostname;
+            const port = window.location.port || "8765";
+            
+            // If served by the server, prepopulate and connect
+            if (hostname && window.location.protocol.startsWith('http')) {
+                serverIpInput.value = hostname;
+                serverPortInput.value = port;
+                initConnection(hostname, port);
+            } else {
+                // Check localStorage
+                const savedIp = localStorage.getItem('rov_server_ip');
+                const savedPort = localStorage.getItem('rov_server_port');
+                if (savedIp) {
+                    serverIpInput.value = savedIp;
+                    serverPortInput.value = savedPort || "8765";
+                    initConnection(savedIp, savedPort || "8765");
+                } else {
+                    configPanel.style.display = 'flex';
+                }
+            }
+        });
+
+        // Manual Connection Button Trigger
+        connectBtn.addEventListener('click', () => {
+            const ip = serverIpInput.value.trim();
+            const port = serverPortInput.value.trim() || "8765";
+            if (!ip) {
+                alert("Please enter a valid server IP address.");
+                return;
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('rov_server_ip', ip);
+            localStorage.setItem('rov_server_port', port);
+            
+            configPanel.style.display = 'none';
+            initConnection(ip, port);
+        });
+
+        // Initialize WebSocket Connection
+        function initConnection(ip, port) {
+            if (socket) {
+                socket.close();
+            }
+            
+            clearTimeout(reconnectTimeout);
+            clearInterval(pingIntervalTimer);
+            
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            currentUrl = `${protocol}//${ip}:${port}`;
+            
+            updateStatus('connecting', `Connecting...`);
+            
+            try {
+                socket = new WebSocket(currentUrl);
+                
+                socket.onopen = () => {
+                    updateStatus('connected', `Connected`);
+                    reconnectInterval = 2000; // Reset reconnect interval
+                    startPingLoop();
+                };
+                
+                socket.onclose = (event) => {
+                    updateStatus('disconnected', `Disconnected`);
+                    latencyContainer.style.display = 'none';
+                    // Auto-reconnect with backing off mechanism
+                    reconnectTimeout = setTimeout(() => {
+                        console.log("Attempting reconnect...");
+                        initConnection(ip, port);
+                    }, reconnectInterval);
+                    reconnectInterval = Math.min(reconnectInterval * 1.5, 30000); // Backoff limit 30s
+                };
+                
+                socket.onerror = (err) => {
+                    console.error("WebSocket connection error", err);
+                };
+                
+                socket.onmessage = (msg) => {
+                    if (msg.data === "pong") {
+                        const latency = Date.now() - lastPingTime;
+                        latencyText.innerText = `${latency} ms`;
+                    }
+                };
+            } catch (e) {
+                console.error("WebSocket construction failed", e);
+                updateStatus('disconnected', `Error connecting`);
+            }
+        }
+
+        // Helper to update status indicators
+        function updateStatus(state, message) {
+            statusDot.className = 'status-indicator';
+            statusDot.classList.add(state);
+            statusText.innerText = message;
+            footerStatus.innerText = state.toUpperCase() + (state === 'connected' ? ` (to ${currentUrl})` : '');
+            
+            if (state === 'connected') {
+                statusText.style.color = 'var(--success)';
+            } else if (state === 'disconnected') {
+                statusText.style.color = 'var(--danger)';
+            } else {
+                statusText.style.color = 'var(--warning)';
+            }
+        }
+
+        // Ping Loop to measure latency and keep connection alive
+        function startPingLoop() {
+            latencyContainer.style.display = 'flex';
+            pingIntervalTimer = setInterval(() => {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    lastPingTime = Date.now();
+                    socket.send("ping");
+                }
+            }, 5000); // check latency every 5 seconds
+        }
+
+        // Send Key Event over Socket
+        function sendEvent(command, key) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(`${command}:${key}`);
+            }
+        }
+
+        // Setup Key interaction handlers (Touch & Click Support)
+        keys.forEach(keyElement => {
+            const keyVal = keyElement.getAttribute('data-key');
+            
+            // --- TOUCH EVENTS (Primary for mobile devices) ---
+            keyElement.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keyElement.classList.add('active');
+                sendEvent('down', keyVal);
+            });
+
+            keyElement.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keyElement.classList.remove('active');
+                sendEvent('up', keyVal);
+            });
+
+            keyElement.addEventListener('touchcancel', (e) => {
+                e.preventDefault();
+                keyElement.classList.remove('active');
+                sendEvent('up', keyVal);
+            });
+
+            // --- MOUSE EVENTS (Secondary for desktops / testing) ---
+            keyElement.addEventListener('mousedown', (e) => {
+                // Ignore if it is a touch triggered emulation
+                if (e.button !== 0) return; 
+                mousePressedKey = keyVal;
+                keyElement.classList.add('active');
+                sendEvent('down', keyVal);
+            });
+
+            keyElement.addEventListener('mouseup', (e) => {
+                if (mousePressedKey === keyVal) {
+                    keyElement.classList.remove('active');
+                    sendEvent('up', keyVal);
+                    mousePressedKey = null;
+                }
+            });
+
+            keyElement.addEventListener('mouseleave', (e) => {
+                if (mousePressedKey === keyVal) {
+                    keyElement.classList.remove('active');
+                    sendEvent('up', keyVal);
+                    mousePressedKey = null;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
