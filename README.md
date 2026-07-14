@@ -17,13 +17,13 @@
 
 ---
 
-## 📖 Elevator Pitch
+##  Elevator Pitch
 
 Ever wanted to play keyboard-heavy games like *Hollow Knight* or navigate your media player from your couch without wearing out your laptop keyboard or buying an expensive gamepad? **ROV** turns your mobile phone (via a dedicated Android app or any web browser) into an ultra-low latency virtual controller. It pairs instantly via a QR code and simulates native hardware key inputs on your host machine.
 
 ---
 
-## 🚀 Key Features
+##  Key Features
 
 *   **Zero Configuration Pairing**: Start the server and scan the generated QR code to connect instantly.
 *   **Dual Client Support**: Use the native Android APK client or access the web-based controller page via any browser.
@@ -34,7 +34,7 @@ Ever wanted to play keyboard-heavy games like *Hollow Knight* or navigate your m
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 *   **Backend Server**: Python 3, `asyncio`, `websockets`, `pyautogui`, `qrcode`, `pillow`
 *   **Web Client**: Vanilla HTML5, modern CSS3 (Glassmorphism design, Inter/Outfit typography), native ES6 WebSockets
@@ -42,7 +42,7 @@ Ever wanted to play keyboard-heavy games like *Hollow Knight* or navigate your m
 
 ---
 
-## 📐 System Architecture
+##  System Architecture
 
 ```mermaid
 sequenceDiagram
@@ -65,7 +65,7 @@ sequenceDiagram
 
 ---
 
-## ⚡ Quick Start
+##  Quick Start
 
 ### Prerequisites
 *   Python 3.8 or higher.
@@ -107,7 +107,7 @@ The web client will load a premium controller UI and automatically connect!
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 ```text
 Controller/
@@ -146,7 +146,7 @@ Controller/
 
 ---
 
-## 📚 Detailed Documentation
+##  Detailed Documentation
 
 For advanced setup and development guides, refer to:
 *   [Architecture Details](docs/ARCHITECTURE.md) — How the protocol and simulated input loop works.
@@ -157,19 +157,19 @@ For advanced setup and development guides, refer to:
 
 ---
 
-## 🛡️ Security
+##  Security
 
 This project communicates unencrypted over your local network. It is intended strictly for private home Wi-Fi networks. Do not share your server's QR code or run the server on public, untrusted networks, as anyone on the network could simulate keystrokes on your system. See [SECURITY.md](SECURITY.md) for more details.
 
 ---
 
-## 📄 License
+##  License
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more details.
 
 ---
 
-## 🙏 Acknowledgements
+##  Acknowledgements
 
 *   Developed out of passion to play *Hollow Knight* without wearing out physical keyboards.
 *   Special thanks to the open-source python `pyautogui` and `websockets` library maintainers.
