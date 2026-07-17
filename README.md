@@ -1,10 +1,6 @@
 # ROV: Mobile-to-PC Input Streaming Controller
 
 <p align="center">
-  <img src="assets/logo/rov_logo.png" alt="ROV Logo" width="120" height="120" />
-</p>
-
-<p align="center">
   <strong>A high-performance Remote Controller that streams keyboard inputs from a mobile device or web browser directly to your PC.</strong>
 </p>
 
